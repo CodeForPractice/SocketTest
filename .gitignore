@@ -1,2 +1,6 @@
 /SocketTest.Client/obj
 /SocketTest.Client/bin
+/SocketTest.Common/obj
+/SocketTest.Common/bin
+/SocketTest.Server/obj
+/SocketTest.Server/bin
