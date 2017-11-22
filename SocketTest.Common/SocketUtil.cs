@@ -1,8 +1,7 @@
 ﻿using System;
-using System.Collections.Generic;
 using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
+using System.Net;
+using System.Net.Sockets;
 
 namespace SocketTest.Common
 {
@@ -15,5 +14,58 @@ namespace SocketTest.Common
     /// </summary>
     public static class SocketUtil
     {
+        public static IPAddress GetLocalIPV4()
+        {
+            return Dns.GetHostEntry(Dns.GetHostName()).AddressList.First(m => m.AddressFamily == AddressFamily.InterNetwork);
+        }
+
+        /// <summary>
+        /// 创建socket
+        /// </summary>
+        /// <param name="receiveBufferSize">接收的buffer长度</param>
+        /// <param name="sendBufferSize">发送的buffer长度</param>
+        /// <returns>socket</returns>
+        public static Socket Create(int receiveBufferSize, int sendBufferSize)
+        {
+            var socket = new Socket(AddressFamily.InterNetwork, SocketType.Stream, ProtocolType.Tcp)
+            {
+                SendBufferSize = sendBufferSize,
+                ReceiveBufferSize = receiveBufferSize,
+                NoDelay = true,
+                Blocking = false
+            };
+            socket.SetSocketOption(SocketOptionLevel.Socket, SocketOptionName.DontLinger, true);
+            return socket;
+        }
+
+        public static void ShutDownCurrent(this Socket socket)
+        {
+            if (socket != null)
+            {
+                ExceptionUtil.Eat(() => socket.Shutdown(SocketShutdown.Both));
+                socket.CloseCurrent();
+            }
+        }
+
+        public static void CloseCurrent(this Socket socket)
+        {
+            if (socket != null)
+            {
+                ExceptionUtil.Eat(() => socket.Close(10000));
+            }
+        }
+
+        public static void DisposeCurrent(this SocketAsyncEventArgs e, EventHandler<SocketAsyncEventArgs> Completed)
+        {
+            if (e != null)
+            {
+                ExceptionUtil.Eat(() =>
+                {
+                    e.Completed -= Completed;
+                    e.AcceptSocket = null;
+                    e.Dispose();
+                });
+            }
+        }
     }
 }
