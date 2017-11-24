@@ -19,28 +19,42 @@ namespace SocketTest.Common
     public class ClientSocket
     {
         private Socket _socket;
-        private ManualResetEvent _manualResetEvent;
+        private AutoResetEvent _autoResetEvent;
         private TcpConnetion _tcpConnetion;
+        private IPEndPoint _hostIPEndPoint;
+        private Action<TcpConnetion, byte[]> _messageArrivedHandler;
+        private SocketSetting _socketSetting;
 
-        public ClientSocket()
+        public ClientSocket(IPEndPoint iPEndPoint, SocketSetting socketSetting, Action<TcpConnetion, byte[]> messageArrivedHandler)
         {
-            _socket = SocketUtil.Create(10 * 1024, 10 * 1024);
-            _manualResetEvent = new ManualResetEvent(false);
+            _socket = SocketUtil.Create(socketSetting.ReceiveBufferSize, socketSetting.SendBufferSize);
+            _autoResetEvent = new AutoResetEvent(false);
+            _hostIPEndPoint = iPEndPoint;
+            _messageArrivedHandler = messageArrivedHandler;
+            _socketSetting = socketSetting;
         }
 
-        public ClientSocket Start(string ip, int port)
+        public bool IsConnected
+        {
+            get { return _tcpConnetion != null && _tcpConnetion.IsConnected; }
+        }
+        public TcpConnetion Connection
+        {
+            get { return _tcpConnetion; }
+        }
+
+        public ClientSocket Start()
         {
             var connectArgs = new SocketAsyncEventArgs();
             connectArgs.AcceptSocket = _socket;
-            var ipEndPoint = new IPEndPoint(IPAddress.Parse(ip), port);
-            connectArgs.RemoteEndPoint = ipEndPoint;
+            connectArgs.RemoteEndPoint = _hostIPEndPoint;
             connectArgs.Completed += ConnectArgs_Completed;
             var willRaiseEvent = _socket.ConnectAsync(connectArgs);
             if (!willRaiseEvent)
             {
                 ProcessConnect(connectArgs);
             }
-            _manualResetEvent.WaitOne();
+            _autoResetEvent.WaitOne();
             return this;
         }
 
@@ -55,12 +69,12 @@ namespace SocketTest.Common
             {
                 LogUtil.Warn("连接服务端失败");
                 _socket.ShutDownCurrent();
-                _manualResetEvent.Set();
+                _autoResetEvent.Set();
                 return;
             }
             LogUtil.Info("连接服务端成功");
-            _tcpConnetion = new TcpConnetion(_socket, MessageArrived);
-            _manualResetEvent.Set();
+            _tcpConnetion = new TcpConnetion(_socket, MessageArrived, _socketSetting);
+            _autoResetEvent.Set();
         }
 
 
@@ -71,7 +85,15 @@ namespace SocketTest.Common
 
         private void MessageArrived(TcpConnetion tcpConnetion, byte[] messageBytes)
         {
-            LogUtil.Info($"接收来自客户端发送的信息:{tcpConnetion.RemotingEndPoin}:【{Encoding.UTF8.GetString(messageBytes)}】");
+            try
+            {
+                _messageArrivedHandler?.Invoke(tcpConnetion, messageBytes);
+                LogUtil.Info($"接收来自客户端发送的信息:{tcpConnetion.RemotingEndPoint}:【{Encoding.UTF8.GetString(messageBytes)}】");
+            }
+            catch (Exception e)
+            {
+                LogUtil.Error(e);
+            }
         }
     }
 }

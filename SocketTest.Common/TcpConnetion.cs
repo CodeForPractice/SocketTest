@@ -4,7 +4,6 @@ using System.Collections.Generic;
 using System.IO;
 using System.Net;
 using System.Net.Sockets;
-using System.Text;
 using System.Threading;
 
 namespace SocketTest.Common
@@ -16,7 +15,7 @@ namespace SocketTest.Common
     /// 类功能描述：
     /// 创建标识：yjq 2017/11/22 13:33:50
     /// </summary>
-    public class TcpConnetion
+    public class TcpConnetion : ITcpConnection
     {
         private Socket _socket;
 
@@ -32,8 +31,7 @@ namespace SocketTest.Common
 
         private Action<TcpConnetion, byte[]> _messageHandle;
 
-        private int _sendingBufferSize = 10 * 1024;
-        private int _receiveBufferSize = 10 * 1024;
+        private SocketSetting _socketSetting;
 
         private int _sending = 0;
         private int _receiving = 0;
@@ -43,9 +41,10 @@ namespace SocketTest.Common
 
         private int _receivedMessageCount = 0;
 
-        public TcpConnetion(Socket socket, Action<TcpConnetion, byte[]> messageHandle)
+        public TcpConnetion(Socket socket, Action<TcpConnetion, byte[]> messageHandle, SocketSetting socketSetting)
         {
             _socket = socket;
+            _socketSetting = socketSetting;
             _localEndPoint = socket.LocalEndPoint;
             _remotingEndPoint = socket.RemoteEndPoint;
             _receiveEventArgs = new SocketAsyncEventArgs();
@@ -62,6 +61,16 @@ namespace SocketTest.Common
             TryReceive();
         }
 
+        public bool IsConnected
+        {
+            get { return _socket != null && _socket.Connected; }
+        }
+
+        public Socket Socket
+        {
+            get { return _socket; }
+        }
+
         public EndPoint LocalEndPoint
         {
             get
@@ -70,7 +79,7 @@ namespace SocketTest.Common
             }
         }
 
-        public EndPoint RemotingEndPoin
+        public EndPoint RemotingEndPoint
         {
             get
             {
@@ -106,7 +115,7 @@ namespace SocketTest.Common
             {
                 try
                 {
-                    _receiveEventArgs.SetBuffer(new byte[_receiveBufferSize], 0, _receiveBufferSize);
+                    _receiveEventArgs.SetBuffer(new byte[_socketSetting.ReceiveBufferSize], 0, _socketSetting.ReceiveBufferSize);
                     if (!_receiveEventArgs.AcceptSocket.ReceiveAsync(_receiveEventArgs))
                     {
                         ProcessReceive(_receiveEventArgs);
@@ -240,7 +249,7 @@ namespace SocketTest.Common
                         _sendingStream.Write(item.Array, item.Offset, item.Count);
                         currentStreamLength += item.Count;
                     }
-                    if (currentStreamLength >= _sendingBufferSize)
+                    if (currentStreamLength >= _socketSetting.SendBufferSize)
                     {
                         break;
                     }
@@ -284,7 +293,7 @@ namespace SocketTest.Common
             Interlocked.Exchange(ref _sending, 0);
         }
 
-        private void Close()
+        public void Close()
         {
             if (Interlocked.CompareExchange(ref _closing, 1, 0) == 0)
             {

@@ -1,0 +1,96 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="15.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <Import Project="$(MSBuildExtensionsPath)\$(MSBuildToolsVersion)\Microsoft.Common.props" Condition="Exists('$(MSBuildExtensionsPath)\$(MSBuildToolsVersion)\Microsoft.Common.props')" />
+  <PropertyGroup>
+    <Configuration Condition=" '$(Configuration)' == '' ">Debug</Configuration>
+    <Platform Condition=" '$(Platform)' == '' ">AnyCPU</Platform>
+    <ProjectGuid>{E7E7C3AE-2746-44FF-9884-9C32B6883B96}</ProjectGuid>
+    <OutputType>Library</OutputType>
+    <AppDesignerFolder>Properties</AppDesignerFolder>
+    <RootNamespace>NRpc</RootNamespace>
+    <AssemblyName>NRpc</AssemblyName>
+    <TargetFrameworkVersion>v4.5.1</TargetFrameworkVersion>
+    <FileAlignment>512</FileAlignment>
+  </PropertyGroup>
+  <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Debug|AnyCPU' ">
+    <DebugSymbols>true</DebugSymbols>
+    <DebugType>full</DebugType>
+    <Optimize>false</Optimize>
+    <OutputPath>bin\Debug\</OutputPath>
+    <DefineConstants>DEBUG;TRACE</DefineConstants>
+    <ErrorReport>prompt</ErrorReport>
+    <WarningLevel>4</WarningLevel>
+  </PropertyGroup>
+  <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Release|AnyCPU' ">
+    <DebugType>pdbonly</DebugType>
+    <Optimize>true</Optimize>
+    <OutputPath>bin\Release\</OutputPath>
+    <DefineConstants>TRACE</DefineConstants>
+    <ErrorReport>prompt</ErrorReport>
+    <WarningLevel>4</WarningLevel>
+  </PropertyGroup>
+  <ItemGroup>
+    <Reference Include="Autofac, Version=4.6.2.0, Culture=neutral, PublicKeyToken=17863af14b0044da, processorArchitecture=MSIL">
+      <HintPath>..\packages\Autofac.4.6.2\lib\net45\Autofac.dll</HintPath>
+    </Reference>
+    <Reference Include="NLog, Version=4.0.0.0, Culture=neutral, PublicKeyToken=5120e14c03d0593c, processorArchitecture=MSIL">
+      <HintPath>..\packages\NLog.4.4.12\lib\net45\NLog.dll</HintPath>
+    </Reference>
+    <Reference Include="System" />
+    <Reference Include="System.Core" />
+    <Reference Include="System.Drawing" />
+    <Reference Include="System.IO.Compression.FileSystem" />
+    <Reference Include="System.Numerics" />
+    <Reference Include="System.Runtime.Serialization" />
+    <Reference Include="System.Xml.Linq" />
+    <Reference Include="System.Data.DataSetExtensions" />
+    <Reference Include="Microsoft.CSharp" />
+    <Reference Include="System.Data" />
+    <Reference Include="System.Net.Http" />
+    <Reference Include="System.Xml" />
+  </ItemGroup>
+  <ItemGroup>
+    <Compile Include="Container\AutofacContainer\AutofacLeftScope.cs" />
+    <Compile Include="Container\AutofacContainer\AutofacObjectContainer.cs" />
+    <Compile Include="Container\AutofacContainer\AutofacRegisterExtension.cs" />
+    <Compile Include="Container\ContainerManager.cs" />
+    <Compile Include="Container\IIocRegister.cs" />
+    <Compile Include="Container\IIocResolve.cs" />
+    <Compile Include="Container\IIocScopeResolve.cs" />
+    <Compile Include="Container\IObjectContainer.cs" />
+    <Compile Include="Container\LifeStyle.cs" />
+    <Compile Include="Extensions\ExceptionExtension.cs" />
+    <Compile Include="Extensions\ObjectJudgeExtension.cs" />
+    <Compile Include="Logger\ILogger.cs" />
+    <Compile Include="Logger\ILoggerFactory.cs" />
+    <Compile Include="Logger\LoggerRegisterExtension.cs" />
+    <Compile Include="Logger\NLogger\NLoggerFactory.cs" />
+    <Compile Include="Logger\NLogger\NLogLogger.cs" />
+    <Compile Include="NRpcDisposable.cs" />
+    <Compile Include="Properties\AssemblyInfo.cs" />
+    <Compile Include="Scheduling\IScheduleService.cs" />
+    <Compile Include="Scheduling\ScheduleRegisterExtension.cs" />
+    <Compile Include="Scheduling\ScheduleService.cs" />
+    <Compile Include="Transport\Socketing\ClientSocket.cs" />
+    <Compile Include="Transport\Socketing\Framing\IMessageFramer.cs" />
+    <Compile Include="Transport\Socketing\Framing\LengthPrefixMessageFramer.cs" />
+    <Compile Include="Transport\Socketing\IConnectionEventListener.cs" />
+    <Compile Include="Transport\Socketing\ITcpConnection.cs" />
+    <Compile Include="Transport\Socketing\ServerSocket.cs" />
+    <Compile Include="Transport\Socketing\SocketSetting.cs" />
+    <Compile Include="Transport\Socketing\SocketUtil.cs" />
+    <Compile Include="Transport\Socketing\TcpConnection.cs" />
+    <Compile Include="Transport\SocketRegisterExtension.cs" />
+    <Compile Include="Utils\Ensure.cs" />
+    <Compile Include="Utils\ExceptionUtil.cs" />
+    <Compile Include="Utils\FlowControlUtil.cs" />
+    <Compile Include="Utils\LogUtil.cs" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="packages.config" />
+  </ItemGroup>
+  <ItemGroup>
+    <Folder Include="Transport\Remoting\" />
+  </ItemGroup>
+  <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
+</Project>

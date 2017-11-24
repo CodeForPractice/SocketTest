@@ -43,17 +43,26 @@
     <Reference Include="System.Xml" />
   </ItemGroup>
   <ItemGroup>
+    <Compile Include="ByteUtil.cs" />
     <Compile Include="ClientSocket.cs" />
     <Compile Include="ExceptionUtil.cs" />
     <Compile Include="FramerUtil.cs" />
+    <Compile Include="IConnectionEventListener.cs" />
+    <Compile Include="ITcpConnection.cs" />
     <Compile Include="Logger\ILogger.cs" />
     <Compile Include="Logger\ILoggerFactory.cs" />
     <Compile Include="Logger\NLogger\NLoggerFactory.cs" />
     <Compile Include="Logger\NLogger\NLogLogger.cs" />
     <Compile Include="LogUtil.cs" />
     <Compile Include="MessageFramer.cs" />
+    <Compile Include="ObjectId.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
+    <Compile Include="RemotingClient.cs" />
+    <Compile Include="RemotingUtil.cs" />
     <Compile Include="ServerSocket.cs" />
+    <Compile Include="SocketRequest.cs" />
+    <Compile Include="SocketResponse.cs" />
+    <Compile Include="SocketSetting.cs" />
     <Compile Include="SocketUtil.cs" />
     <Compile Include="TcpConnetion.cs" />
   </ItemGroup>

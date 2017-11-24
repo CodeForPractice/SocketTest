@@ -11,10 +11,10 @@ namespace SocketTest.Server
     {
         static void Main(string[] args)
         {
-            var server = new ServerSocket();
-            server.Start(6789);
+            //var server = new ServerSocket();
+            //server.Start(6789);
             Console.ReadLine();
-            server.Clsoe();
+            //server.Clsoe();
         }
     }
 }

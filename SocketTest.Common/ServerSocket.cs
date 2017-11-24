@@ -21,16 +21,19 @@ namespace SocketTest.Common
         private ManualResetEvent _manualResetEvent;
         private SocketAsyncEventArgs _acceptArgs;
         private List<TcpConnetion> list = new List<TcpConnetion>();
+        private Action<TcpConnetion, byte[]> _messageArrivedHandler;
+        private SocketSetting _socketSetting;
 
         private int _receivedMessageCount = 0;
 
-        public ServerSocket()
+        public ServerSocket(SocketSetting socketSetting, Action<TcpConnetion, byte[]> messageArrivedHandler)
         {
-            _socket = SocketUtil.Create(10 * 1024, 40 * 1024);
+            _socketSetting = socketSetting;
+            _messageArrivedHandler = messageArrivedHandler;
+            _socket = SocketUtil.Create(socketSetting.ReceiveBufferSize, socketSetting.SendBufferSize);
             _manualResetEvent = new ManualResetEvent(false);
             _acceptArgs = new SocketAsyncEventArgs();
             _acceptArgs.Completed += AcceptEventArg_Completed;
-            //_acceptArgs.AcceptSocket = _socket;
         }
 
         public ServerSocket Start(int port)
@@ -80,7 +83,7 @@ namespace SocketTest.Common
                 {
                     var acceptSocket = e.AcceptSocket;
                     e.AcceptSocket = null;
-                    var tcpConnetion = new TcpConnetion(acceptSocket, MessageArrived);
+                    var tcpConnetion = new TcpConnetion(acceptSocket, MessageArrived, _socketSetting);
                     LogUtil.Info($"Socket accepted, remote endpoint:{acceptSocket.RemoteEndPoint}");
                 }
             }
@@ -97,9 +100,18 @@ namespace SocketTest.Common
         private void MessageArrived(TcpConnetion tcpConnetion, byte[] messageBytes)
         {
             var currentMessageCount = Interlocked.Increment(ref _receivedMessageCount);
-            LogUtil.Fatal($"当前已接收{currentMessageCount.ToString()}条记录");
-            LogUtil.Info($"接收来自客户端发送的信息:{tcpConnetion.RemotingEndPoin}:【{Encoding.UTF8.GetString(messageBytes)}】");
-            tcpConnetion.SendMessage(Encoding.UTF8.GetBytes($"这是对第{Encoding.UTF8.GetString(messageBytes)}信息的回复"));
+            try
+            {
+                LogUtil.Info($"接收来自客户端发送的信息:{tcpConnetion.RemotingEndPoint}:【{Encoding.UTF8.GetString(messageBytes)}】");
+                _messageArrivedHandler?.Invoke(tcpConnetion, messageBytes);
+            }
+            catch (Exception e)
+            {
+                LogUtil.Error(e);
+            }
+            //LogUtil.Fatal($"当前已接收{currentMessageCount.ToString()}条记录");
+            //LogUtil.Info($"接收来自客户端发送的信息:{tcpConnetion.RemotingEndPoin}:【{Encoding.UTF8.GetString(messageBytes)}】");
+            //tcpConnetion.SendMessage(Encoding.UTF8.GetBytes($"这是对第{Encoding.UTF8.GetString(messageBytes)}信息的回复"));
         }
 
         public void Clsoe()
