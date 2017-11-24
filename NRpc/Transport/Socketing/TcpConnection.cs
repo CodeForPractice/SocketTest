@@ -1,4 +1,5 @@
 ﻿using NRpc.Container;
+using NRpc.Transport.Socketing.BufferManagement;
 using NRpc.Transport.Socketing.Framing;
 using NRpc.Utils;
 using System;
@@ -8,29 +9,36 @@ using System.IO;
 using System.Net;
 using System.Net.Sockets;
 using System.Threading;
+using System.Threading.Tasks;
 
 namespace NRpc.Transport.Socketing
 {
-    /// <summary>
-    /// Copyright (C) 2017 yjq 版权所有。
-    /// 类名：TcpConnection.cs
-    /// 类属性：公共类（非静态）
-    /// 类功能描述：
-    /// 创建标识：yjq 2017/11/24 16:26:37
-    /// </summary>
+    public interface ITcpConnection
+    {
+        Guid Id { get; }
+        bool IsConnected { get; }
+        EndPoint LocalEndPoint { get; }
+        EndPoint RemotingEndPoint { get; }
+
+        void QueueMessage(byte[] message);
+
+        void Close();
+    }
+
     public class TcpConnection : ITcpConnection
     {
-        #region Private Properties
+        #region Private Variables
 
+        private readonly Guid _id;
         private Socket _socket;
         private readonly SocketSetting _setting;
         private readonly EndPoint _localEndPoint;
         private readonly EndPoint _remotingEndPoint;
         private readonly SocketAsyncEventArgs _sendSocketArgs;
         private readonly SocketAsyncEventArgs _receiveSocketArgs;
+        private readonly IBufferPool _receiveDataBufferPool;
         private readonly IMessageFramer _framer;
         private readonly ConcurrentQueue<IEnumerable<ArraySegment<byte>>> _sendingQueue = new ConcurrentQueue<IEnumerable<ArraySegment<byte>>>();
-        private readonly ConcurrentQueue<ArraySegment<byte>> _receiveQueue = new ConcurrentQueue<ArraySegment<byte>>();
         private readonly MemoryStream _sendingStream = new MemoryStream();
 
         private Action<ITcpConnection, SocketError> _connectionClosedHandler;
@@ -41,11 +49,16 @@ namespace NRpc.Transport.Socketing
         private int _parsing;
         private int _closing;
 
-        private long _pendingMessageCount;
+        private long _pendingMessageCount = 0L;
 
-        #endregion Private Properties
+        #endregion Private Variables
 
         #region Public Properties
+
+        public Guid Id
+        {
+            get { return _id; }
+        }
 
         public bool IsConnected
         {
@@ -79,15 +92,18 @@ namespace NRpc.Transport.Socketing
 
         #endregion Public Properties
 
-        public TcpConnection(Socket socket, SocketSetting setting, Action<ITcpConnection, byte[]> messageArrivedHandler, Action<ITcpConnection, SocketError> connectionClosedHandler)
+        public TcpConnection(Socket socket, SocketSetting setting, IBufferPool receiveDataBufferPool, Action<ITcpConnection, byte[]> messageArrivedHandler, Action<ITcpConnection, SocketError> connectionClosedHandler)
         {
             Ensure.NotNull(socket, "socket");
             Ensure.NotNull(setting, "setting");
+            Ensure.NotNull(receiveDataBufferPool, "receiveDataBufferPool");
             Ensure.NotNull(messageArrivedHandler, "messageArrivedHandler");
             Ensure.NotNull(connectionClosedHandler, "connectionClosedHandler");
 
+            _id = Guid.NewGuid();
             _socket = socket;
             _setting = setting;
+            _receiveDataBufferPool = receiveDataBufferPool;
             _localEndPoint = socket.LocalEndPoint;
             _remotingEndPoint = socket.RemoteEndPoint;
             _messageArrivedHandler = messageArrivedHandler;
@@ -100,12 +116,16 @@ namespace NRpc.Transport.Socketing
             _receiveSocketArgs = new SocketAsyncEventArgs();
             _receiveSocketArgs.AcceptSocket = socket;
             _receiveSocketArgs.Completed += OnReceiveAsyncCompleted;
+            _receiveSocketArgs.UserToken = new ConcurrentQueue<ReceivedData>();
 
             _framer = ContainerManager.Resolve<IMessageFramer>();
             _framer.RegisterMessageArrivedCallback(OnMessageArrived);
+
+            TryReceive();
+            TrySend();
         }
 
-        public void SendMessage(byte[] message)
+        public void QueueMessage(byte[] message)
         {
             if (message.Length == 0)
             {
@@ -141,7 +161,7 @@ namespace NRpc.Transport.Socketing
                 {
                     _sendingStream.Write(segment.Array, segment.Offset, segment.Count);
                 }
-                if (_sendingStream.Length >= _setting.SendPackageSize)
+                if (_sendingStream.Length >= _setting.MaxSendPacketSize)
                 {
                     break;
                 }
@@ -163,7 +183,7 @@ namespace NRpc.Transport.Socketing
                 var firedAsync = _sendSocketArgs.AcceptSocket.SendAsync(_sendSocketArgs);
                 if (!firedAsync)
                 {
-                    ProcessSend(_sendSocketArgs);
+                    Task.Factory.StartNew(() => ProcessSend(_sendSocketArgs));
                 }
             }
             catch (Exception ex)
@@ -173,13 +193,14 @@ namespace NRpc.Transport.Socketing
             }
         }
 
+        private void OnSendAsyncCompleted(object sender, SocketAsyncEventArgs e)
+        {
+            ProcessSend(e);
+        }
+
         private void ProcessSend(SocketAsyncEventArgs socketArgs)
         {
             if (_closing == 1) return;
-            if (socketArgs.Buffer != null)
-            {
-                socketArgs.SetBuffer(null, 0, 0);
-            }
 
             ExitSending();
 
@@ -191,11 +212,6 @@ namespace NRpc.Transport.Socketing
             {
                 CloseInternal(socketArgs.SocketError, "Socket send error.", null);
             }
-        }
-
-        private void OnSendAsyncCompleted(object sender, SocketAsyncEventArgs e)
-        {
-            ProcessSend(e);
         }
 
         private bool EnterSending()
@@ -215,9 +231,17 @@ namespace NRpc.Transport.Socketing
         private void TryReceive()
         {
             if (!EnterReceiving()) return;
+
+            var buffer = _receiveDataBufferPool.Get();
+            if (buffer == null)
+            {
+                CloseInternal(SocketError.Shutdown, "Socket receive allocate buffer failed.", null);
+                ExitReceiving();
+                return;
+            }
+
             try
             {
-                var buffer = new Byte[_setting.ReceiveBufferSize];
                 _receiveSocketArgs.SetBuffer(buffer, 0, buffer.Length);
                 if (_receiveSocketArgs.Buffer == null)
                 {
@@ -229,7 +253,7 @@ namespace NRpc.Transport.Socketing
                 bool firedAsync = _receiveSocketArgs.AcceptSocket.ReceiveAsync(_receiveSocketArgs);
                 if (!firedAsync)
                 {
-                    ProcessReceive(_receiveSocketArgs);
+                    Task.Factory.StartNew(() => ProcessReceive(_receiveSocketArgs));
                 }
             }
             catch (Exception ex)
@@ -255,10 +279,11 @@ namespace NRpc.Transport.Socketing
             try
             {
                 var segment = new ArraySegment<byte>(socketArgs.Buffer, socketArgs.Offset, socketArgs.Count);
-                _receiveQueue.Enqueue(segment);
+                var receiveQueue = socketArgs.UserToken as ConcurrentQueue<ReceivedData>;
+                receiveQueue.Enqueue(new ReceivedData(segment, socketArgs.BytesTransferred));
                 socketArgs.SetBuffer(null, 0, 0);
 
-                TryParsingReceivedData();
+                TryParsingReceivedData(receiveQueue);
             }
             catch (Exception ex)
             {
@@ -270,20 +295,28 @@ namespace NRpc.Transport.Socketing
             TryReceive();
         }
 
-        private void TryParsingReceivedData()
+        private void TryParsingReceivedData(ConcurrentQueue<ReceivedData> receiveQueue)
         {
             if (!EnterParsing()) return;
 
             try
             {
+                var dataList = new List<ReceivedData>(receiveQueue.Count);
                 var segmentList = new List<ArraySegment<byte>>();
 
-                while (_receiveQueue.TryDequeue(out ArraySegment<byte> data))
+                ReceivedData data;
+                while (receiveQueue.TryDequeue(out data))
                 {
-                    segmentList.Add(data);
+                    dataList.Add(data);
+                    segmentList.Add(new ArraySegment<byte>(data.Buf.Array, data.Buf.Offset, data.DataLen));
                 }
 
                 _framer.Package(segmentList);
+
+                for (int i = 0, n = dataList.Count; i < n; ++i)
+                {
+                    _receiveDataBufferPool.Return(dataList[i].Buf.Array);
+                }
             }
             finally
             {
@@ -295,6 +328,7 @@ namespace NRpc.Transport.Socketing
         {
             byte[] message = new byte[messageSegment.Count];
             Array.Copy(messageSegment.Array, messageSegment.Offset, message, 0, messageSegment.Count);
+
             try
             {
                 _messageArrivedHandler(this, message);
@@ -343,6 +377,18 @@ namespace NRpc.Transport.Socketing
         {
             if (Interlocked.CompareExchange(ref _closing, 1, 0) == 0)
             {
+                try
+                {
+                    if (_receiveSocketArgs.Buffer != null)
+                    {
+                        _receiveDataBufferPool.Return(_receiveSocketArgs.Buffer);
+                    }
+                }
+                catch (Exception ex)
+                {
+                    LogUtil.Error("Return receiving socket event buffer failed.", ex);
+                }
+
                 ExceptionUtil.Eat(() =>
                 {
                     if (_sendSocketArgs != null)
@@ -363,7 +409,7 @@ namespace NRpc.Transport.Socketing
                 var isDisposedException = exception != null && exception is ObjectDisposedException;
                 if (!isDisposedException)
                 {
-                    LogUtil.Info(string.Format("Socket closed, remote endpoint:{0} socketError:{1}, reason:{2}, ex:{3}", RemotingEndPoint, socketError, reason, exception));
+                    LogUtil.InfoFormat("Socket closed, remote endpoint:{0}, socketError:{1}, reason:{2}, ex:{3}", RemotingEndPoint, socketError, reason, exception);
                 }
                 _socket = null;
 

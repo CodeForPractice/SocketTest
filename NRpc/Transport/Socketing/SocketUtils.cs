@@ -5,13 +5,6 @@ using System.Net.Sockets;
 
 namespace NRpc.Transport.Socketing
 {
-    /// <summary>
-    /// Copyright (C) 2017 yjq 版权所有。
-    /// 类名：SocketUtil.cs
-    /// 类属性：公共类（非静态）
-    /// 类功能描述：
-    /// 创建标识：yjq 2017/11/24 17:34:33
-    /// </summary>
     public class SocketUtils
     {
         public static IPAddress GetLocalIPV4()
@@ -26,7 +19,6 @@ namespace NRpc.Transport.Socketing
             socket.Blocking = false;
             socket.SendBufferSize = sendBufferSize;
             socket.ReceiveBufferSize = receiveBufferSize;
-            socket.SetSocketOption(SocketOptionLevel.Socket, SocketOptionName.DontLinger, true);
             return socket;
         }
 

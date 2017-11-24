@@ -54,13 +54,16 @@
     <Compile Include="Container\AutofacContainer\AutofacObjectContainer.cs" />
     <Compile Include="Container\AutofacContainer\AutofacRegisterExtension.cs" />
     <Compile Include="Container\ContainerManager.cs" />
+    <Compile Include="Container\ContainerManagerExtension.cs" />
     <Compile Include="Container\IIocRegister.cs" />
     <Compile Include="Container\IIocResolve.cs" />
     <Compile Include="Container\IIocScopeResolve.cs" />
     <Compile Include="Container\IObjectContainer.cs" />
     <Compile Include="Container\LifeStyle.cs" />
+    <Compile Include="Extensions\ConcurrentDictionaryExtensions.cs" />
     <Compile Include="Extensions\ExceptionExtension.cs" />
     <Compile Include="Extensions\ObjectJudgeExtension.cs" />
+    <Compile Include="Extensions\TaskExtensions.cs" />
     <Compile Include="Logger\ILogger.cs" />
     <Compile Include="Logger\ILoggerFactory.cs" />
     <Compile Include="Logger\LoggerRegisterExtension.cs" />
@@ -71,26 +74,48 @@
     <Compile Include="Scheduling\IScheduleService.cs" />
     <Compile Include="Scheduling\ScheduleRegisterExtension.cs" />
     <Compile Include="Scheduling\ScheduleService.cs" />
+    <Compile Include="Transport\Remoting\Exceptions\RemotingRequestException.cs" />
+    <Compile Include="Transport\Remoting\Exceptions\RemotingServerUnAvailableException.cs" />
+    <Compile Include="Transport\Remoting\Exceptions\RemotingTimeoutException.cs" />
+    <Compile Include="Transport\Remoting\Exceptions\ResponseFutureAddFailedException.cs" />
+    <Compile Include="Transport\Remoting\IRemotingServerMessageHandler.cs" />
+    <Compile Include="Transport\Remoting\IRequestHandler.cs" />
+    <Compile Include="Transport\Remoting\IRequestHandlerContext.cs" />
+    <Compile Include="Transport\Remoting\IResponseHandler.cs" />
+    <Compile Include="Transport\Remoting\RemotingRequest.cs" />
+    <Compile Include="Transport\Remoting\RemotingResponse.cs" />
+    <Compile Include="Transport\Remoting\RemotingServerMessage.cs" />
+    <Compile Include="Transport\Remoting\RemotingServerMessageType.cs" />
+    <Compile Include="Transport\Remoting\RemotingUtil.cs" />
+    <Compile Include="Transport\Remoting\ResponseFuture.cs" />
+    <Compile Include="Transport\Remoting\SocketRemotingClient.cs" />
+    <Compile Include="Transport\Remoting\SocketRemotingServer.cs" />
+    <Compile Include="Transport\Remoting\SocketRequestHandlerContext.cs" />
+    <Compile Include="Transport\Socketing\BufferManagement\BufferItemCreator.cs" />
+    <Compile Include="Transport\Socketing\BufferManagement\BufferPool.cs" />
+    <Compile Include="Transport\Socketing\BufferManagement\IBufferPool.cs" />
+    <Compile Include="Transport\Socketing\BufferManagement\IntelliPool.cs" />
+    <Compile Include="Transport\Socketing\BufferManagement\IPool.cs" />
+    <Compile Include="Transport\Socketing\BufferManagement\IPoolItemCreator.cs" />
     <Compile Include="Transport\Socketing\ClientSocket.cs" />
     <Compile Include="Transport\Socketing\Framing\IMessageFramer.cs" />
     <Compile Include="Transport\Socketing\Framing\LengthPrefixMessageFramer.cs" />
     <Compile Include="Transport\Socketing\IConnectionEventListener.cs" />
-    <Compile Include="Transport\Socketing\ITcpConnection.cs" />
     <Compile Include="Transport\Socketing\ServerSocket.cs" />
     <Compile Include="Transport\Socketing\SocketSetting.cs" />
-    <Compile Include="Transport\Socketing\SocketUtil.cs" />
+    <Compile Include="Transport\Socketing\SocketUtils.cs" />
     <Compile Include="Transport\Socketing\TcpConnection.cs" />
     <Compile Include="Transport\SocketRegisterExtension.cs" />
+    <Compile Include="Utils\ByteUtil.cs" />
     <Compile Include="Utils\Ensure.cs" />
     <Compile Include="Utils\ExceptionUtil.cs" />
     <Compile Include="Utils\FlowControlUtil.cs" />
     <Compile Include="Utils\LogUtil.cs" />
+    <Compile Include="Utils\ObjectId.cs" />
   </ItemGroup>
   <ItemGroup>
     <None Include="packages.config" />
   </ItemGroup>
-  <ItemGroup>
-    <Folder Include="Transport\Remoting\" />
-  </ItemGroup>
+  <ItemGroup />
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
 </Project>

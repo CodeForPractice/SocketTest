@@ -1,4 +1,5 @@
-﻿using NRpc.Utils;
+﻿using NRpc.Transport.Socketing.BufferManagement;
+using NRpc.Utils;
 using System;
 using System.Collections.Generic;
 using System.Net;
@@ -7,28 +8,23 @@ using System.Threading;
 
 namespace NRpc.Transport.Socketing
 {
-    /// <summary>
-    /// Copyright (C) 2017 yjq 版权所有。
-    /// 类名：ClientSocket.cs
-    /// 类属性：公共类（非静态）
-    /// 类功能描述：
-    /// 创建标识：yjq 2017/11/24 17:40:08
-    /// </summary>
     public class ClientSocket
     {
-        #region Private Properties
+        #region Private Variables
 
-        private EndPoint _serverEndPoint;
-        private EndPoint _localEndPoint;
+        private readonly EndPoint _serverEndPoint;
+        private readonly EndPoint _localEndPoint;
         private Socket _socket;
         private TcpConnection _connection;
         private readonly SocketSetting _setting;
         private readonly IList<IConnectionEventListener> _connectionEventListeners;
         private readonly Action<ITcpConnection, byte[]> _messageArrivedHandler;
+        private readonly IBufferPool _receiveDataBufferPool;
         private readonly ManualResetEvent _waitConnectHandle;
         private readonly int _flowControlThreshold;
+        private long _flowControlTimes;
 
-        #endregion Private Properties
+        #endregion Private Variables
 
         public bool IsConnected
         {
@@ -40,10 +36,11 @@ namespace NRpc.Transport.Socketing
             get { return _connection; }
         }
 
-        public ClientSocket(EndPoint serverEndPoint, EndPoint localEndPoint, SocketSetting setting, Action<ITcpConnection, byte[]> messageArrivedHandler)
+        public ClientSocket(EndPoint serverEndPoint, EndPoint localEndPoint, SocketSetting setting, IBufferPool receiveDataBufferPool, Action<ITcpConnection, byte[]> messageArrivedHandler)
         {
             Ensure.NotNull(serverEndPoint, "serverEndPoint");
             Ensure.NotNull(setting, "setting");
+            Ensure.NotNull(receiveDataBufferPool, "receiveDataBufferPool");
             Ensure.NotNull(messageArrivedHandler, "messageArrivedHandler");
 
             _connectionEventListeners = new List<IConnectionEventListener>();
@@ -51,6 +48,7 @@ namespace NRpc.Transport.Socketing
             _serverEndPoint = serverEndPoint;
             _localEndPoint = localEndPoint;
             _setting = setting;
+            _receiveDataBufferPool = receiveDataBufferPool;
             _messageArrivedHandler = messageArrivedHandler;
             _waitConnectHandle = new ManualResetEvent(false);
             _socket = SocketUtils.CreateSocket(_setting.SendBufferSize, _setting.ReceiveBufferSize);
@@ -65,9 +63,11 @@ namespace NRpc.Transport.Socketing
 
         public ClientSocket Start(int waitMilliseconds = 5000)
         {
-            var socketArgs = new SocketAsyncEventArgs();
-            socketArgs.AcceptSocket = _socket;
-            socketArgs.RemoteEndPoint = _serverEndPoint;
+            var socketArgs = new SocketAsyncEventArgs
+            {
+                AcceptSocket = _socket,
+                RemoteEndPoint = _serverEndPoint
+            };
             socketArgs.Completed += OnConnectAsyncCompleted;
             if (_localEndPoint != null)
             {
@@ -87,7 +87,7 @@ namespace NRpc.Transport.Socketing
 
         public ClientSocket QueueMessage(byte[] message)
         {
-            _connection.SendMessage(message);
+            _connection.QueueMessage(message);
             FlowControlIfNecessary();
             return this;
         }
@@ -109,14 +109,15 @@ namespace NRpc.Transport.Socketing
 
         private void FlowControlIfNecessary()
         {
-            if (_flowControlThreshold > 0 && _connection.PendingMessageCount >= _flowControlThreshold)
+            var pendingMessageCount = _connection.PendingMessageCount;
+            if (_flowControlThreshold > 0 && pendingMessageCount >= _flowControlThreshold)
             {
-                var milliseconds = FlowControlUtil.CalculateFlowControlTimeMilliseconds(
-                    (int)_connection.PendingMessageCount,
-                    _flowControlThreshold,
-                    _setting.SendMessageFlowControlStepPercent,
-                    _setting.SendMessageFlowControlWaitMilliseconds);
-                Thread.Sleep(milliseconds);
+                Thread.Sleep(1);
+                var flowControlTimes = Interlocked.Increment(ref _flowControlTimes);
+                if (flowControlTimes % 10000 == 0)
+                {
+                    LogUtil.InfoFormat("Send socket data flow control, pendingMessageCount: {0}, flowControlThreshold: {1}, flowControlTimes: {2}", pendingMessageCount, _flowControlThreshold, flowControlTimes);
+                }
             }
         }
 
@@ -135,15 +136,16 @@ namespace NRpc.Transport.Socketing
             if (e.SocketError != SocketError.Success)
             {
                 SocketUtils.ShutdownSocket(_socket);
-                LogUtil.Info(string.Format("Socket connect failed, socketError:{0}", e.SocketError));
-                OnConnectionFailed(e.SocketError);
+                LogUtil.ErrorFormat("Socket connect failed, remoting server endpoint:{0}, socketError:{1}", _serverEndPoint, e.SocketError);
+                OnConnectionFailed(_serverEndPoint, e.SocketError);
                 _waitConnectHandle.Set();
                 return;
             }
 
-            _connection = new TcpConnection(_socket, _setting, OnMessageArrived, OnConnectionClosed);
+            _connection = new TcpConnection(_socket, _setting, _receiveDataBufferPool, OnMessageArrived, OnConnectionClosed);
 
-            LogUtil.Info(string.Format("Socket connected, remote endpoint:{0}, local endpoint:{1}", _connection.RemotingEndPoint, _connection.LocalEndPoint));
+            LogUtil.InfoFormat("Socket connected, remote endpoint:{0}, local endpoint:{1}", _connection.RemotingEndPoint, _connection.LocalEndPoint);
+
             OnConnectionEstablished(_connection);
 
             _waitConnectHandle.Set();
@@ -176,13 +178,13 @@ namespace NRpc.Transport.Socketing
             }
         }
 
-        private void OnConnectionFailed(SocketError socketError)
+        private void OnConnectionFailed(EndPoint remotingEndPoint, SocketError socketError)
         {
             foreach (var listener in _connectionEventListeners)
             {
                 try
                 {
-                    listener.OnConnectionFailed(socketError);
+                    listener.OnConnectionFailed(remotingEndPoint, socketError);
                 }
                 catch (Exception ex)
                 {

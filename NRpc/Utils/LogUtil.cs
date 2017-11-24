@@ -49,6 +49,20 @@ namespace NRpc.Utils
             }
         }
 
+
+        /// <summary>
+        /// 调试日志
+        /// </summary>
+        /// <param name="format">包含格式项的字符串</param>
+        /// <param name="args">格式参数</param>
+        public static void DebugFormat(string format, params object[] args)
+        {
+            foreach (var logger in GetLogger())
+            {
+                logger.DebugFormat(format, args);
+            }
+        }
+
         /// <summary>
         /// 输出普通日志信息
         /// </summary>
@@ -58,6 +72,19 @@ namespace NRpc.Utils
             foreach (var logger in GetLogger(loggerName: loggerName))
             {
                 logger.Info(msg);
+            }
+        }
+
+        /// <summary>
+        /// 记录普通日志
+        /// </summary>
+        /// <param name="format"></param>
+        /// <param name="args"></param>
+        public static void InfoFormat(string format, params object[] args)
+        {
+            foreach (var logger in GetLogger())
+            {
+                logger.InfoFormat(format, args);
             }
         }
 
@@ -111,6 +138,19 @@ namespace NRpc.Utils
             foreach (var logger in GetLogger(loggerName: loggerName))
             {
                 logger.Error(msg, ex);
+            }
+        }
+
+        /// <summary>
+        /// 错误日志
+        /// </summary>
+        /// <param name="format">包含格式项的字符串</param>
+        /// <param name="args">格式参数</param>
+        public static void ErrorFormat(string format, params object[] args)
+        {
+            foreach (var logger in GetLogger())
+            {
+                logger.ErrorFormat(format, args);
             }
         }
 

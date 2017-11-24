@@ -52,9 +52,9 @@
     </None>
   </ItemGroup>
   <ItemGroup>
-    <ProjectReference Include="..\SocketTest.Common\SocketTest.Common.csproj">
-      <Project>{33e12923-3ead-4c82-b68f-f6f41e439d84}</Project>
-      <Name>SocketTest.Common</Name>
+    <ProjectReference Include="..\NRpc\NRpc.csproj">
+      <Project>{e7e7c3ae-2746-44ff-9884-9c32b6883b96}</Project>
+      <Name>NRpc</Name>
     </ProjectReference>
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />

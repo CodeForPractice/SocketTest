@@ -1,6 +1,5 @@
 ﻿using Autofac;
 using NRpc.Container.AutofacContainer;
-using NRpc.Logger;
 using System;
 
 namespace NRpc.Container
@@ -41,9 +40,14 @@ namespace NRpc.Container
         /// </summary>
         /// <param name="container">autofac容器</param>
         /// <returns></returns>
-        public static ContainerManager UseAutofacContainer(IContainer container)
+        public static ContainerManager SetAutofacContainer(IContainer container)
         {
             return SetContainer(new AutofacObjectContainer(container));
+        }
+
+        public static ContainerManager UseAutofacContainer()
+        {
+            return UseAutofacContainer(null);
         }
 
         /// <summary>
@@ -53,7 +57,7 @@ namespace NRpc.Container
         /// <returns></returns>
         public static ContainerManager UseAutofacContainer(ContainerBuilder containerBuilder)
         {
-            return SetContainer(new AutofacObjectContainer(containerBuilder)).UseNLog();
+            return SetContainer(new AutofacObjectContainer(containerBuilder));
         }
 
         private static ContainerManager SetContainer(IObjectContainer container)

@@ -1,20 +1,16 @@
-﻿using NRpc.Utils;
+﻿using NRpc.Extensions;
+using NRpc.Transport.Socketing.BufferManagement;
+using NRpc.Utils;
 using System;
+using System.Collections.Concurrent;
 using System.Collections.Generic;
+using System.Linq;
 using System.Net;
 using System.Net.Sockets;
-using System.Threading;
 using System.Threading.Tasks;
 
 namespace NRpc.Transport.Socketing
 {
-    /// <summary>
-    /// Copyright (C) 2017 yjq 版权所有。
-    /// 类名：ServerSocket.cs
-    /// 类属性：公共类（非静态）
-    /// 类功能描述：
-    /// 创建标识：yjq 2017/11/24 17:48:33
-    /// </summary>
     public class ServerSocket
     {
         #region Private Variables
@@ -25,19 +21,24 @@ namespace NRpc.Transport.Socketing
         private readonly SocketAsyncEventArgs _acceptSocketArgs;
         private readonly IList<IConnectionEventListener> _connectionEventListeners;
         private readonly Action<ITcpConnection, byte[], Action<byte[]>> _messageArrivedHandler;
+        private readonly IBufferPool _receiveDataBufferPool;
+        private readonly ConcurrentDictionary<Guid, ITcpConnection> _connectionDict;
 
         #endregion Private Variables
 
-        public ServerSocket(IPEndPoint listeningEndPoint, SocketSetting setting, Action<ITcpConnection, byte[], Action<byte[]>> messageArrivedHandler)
+        public ServerSocket(IPEndPoint listeningEndPoint, SocketSetting setting, IBufferPool receiveDataBufferPool, Action<ITcpConnection, byte[], Action<byte[]>> messageArrivedHandler)
         {
             Ensure.NotNull(listeningEndPoint, "listeningEndPoint");
             Ensure.NotNull(setting, "setting");
+            Ensure.NotNull(receiveDataBufferPool, "receiveDataBufferPool");
             Ensure.NotNull(messageArrivedHandler, "messageArrivedHandler");
 
             _listeningEndPoint = listeningEndPoint;
             _setting = setting;
+            _receiveDataBufferPool = receiveDataBufferPool;
             _connectionEventListeners = new List<IConnectionEventListener>();
             _messageArrivedHandler = messageArrivedHandler;
+            _connectionDict = new ConcurrentDictionary<Guid, ITcpConnection>();
             _socket = SocketUtils.CreateSocket(_setting.SendBufferSize, _setting.ReceiveBufferSize);
             _acceptSocketArgs = new SocketAsyncEventArgs();
             _acceptSocketArgs.Completed += AcceptCompleted;
@@ -50,7 +51,7 @@ namespace NRpc.Transport.Socketing
 
         public void Start()
         {
-            LogUtil.Info(string.Format("Socket server is starting, listening on TCP endpoint: {0}.", _listeningEndPoint));
+            LogUtil.InfoFormat("Socket server is starting, listening on TCP endpoint: {0}.", _listeningEndPoint);
 
             try
             {
@@ -70,7 +71,29 @@ namespace NRpc.Transport.Socketing
         public void Shutdown()
         {
             SocketUtils.ShutdownSocket(_socket);
-            LogUtil.Info(string.Format("Socket server shutdown, listening TCP endpoint: {0}.", _listeningEndPoint));
+            LogUtil.InfoFormat("Socket server shutdown, listening TCP endpoint: {0}.", _listeningEndPoint);
+        }
+
+        public void PushMessageToAllConnections(byte[] message)
+        {
+            foreach (var connection in _connectionDict.Values)
+            {
+                connection.QueueMessage(message);
+            }
+        }
+
+        public void PushMessageToConnection(Guid connectionId, byte[] message)
+        {
+            ITcpConnection connection;
+            if (_connectionDict.TryGetValue(connectionId, out connection))
+            {
+                connection.QueueMessage(message);
+            }
+        }
+
+        public IList<ITcpConnection> GetAllConnections()
+        {
+            return _connectionDict.Values.ToList();
         }
 
         private void StartAccepting()
@@ -87,10 +110,9 @@ namespace NRpc.Transport.Socketing
             {
                 if (!(ex is ObjectDisposedException))
                 {
-                    LogUtil.Info("Socket accept has exception, try to start accepting one second later." + ex.ToString());
+                    LogUtil.Info("Socket accept has exception." + ex);
                 }
-                Thread.Sleep(1000);
-                StartAccepting();
+                Task.Factory.StartNew(() => StartAccepting());
             }
         }
 
@@ -132,24 +154,32 @@ namespace NRpc.Transport.Socketing
             {
                 try
                 {
-                    var connection = new TcpConnection(socket, _setting, OnMessageArrived, OnConnectionClosed);
-                    LogUtil.Info(string.Format("Socket accepted, remote endpoint:{0}", socket.RemoteEndPoint));
-                    foreach (var listener in _connectionEventListeners)
+                    var connection = new TcpConnection(socket, _setting, _receiveDataBufferPool, OnMessageArrived, OnConnectionClosed);
+                    if (_connectionDict.TryAdd(connection.Id, connection))
                     {
-                        try
+                        LogUtil.InfoFormat("Socket accepted, remote endpoint:{0}", socket.RemoteEndPoint);
+
+                        foreach (var listener in _connectionEventListeners)
                         {
-                            listener.OnConnectionAccepted(connection);
+                            try
+                            {
+                                listener.OnConnectionAccepted(connection);
+                            }
+                            catch (Exception ex)
+                            {
+                                LogUtil.Error(string.Format("Notify connection accepted failed, listener type:{0}", listener.GetType().Name), ex);
+                            }
                         }
-                        catch (Exception ex)
-                        {
-                            LogUtil.Error(string.Format("Notify connection accepted failed, listener type:{0}", listener.GetType().Name), ex);
-                        }
+                    }
+                    else
+                    {
+                        LogUtil.InfoFormat("Duplicated tcp connection, remote endpoint:{0}", socket.RemoteEndPoint);
                     }
                 }
                 catch (ObjectDisposedException) { }
                 catch (Exception ex)
                 {
-                    LogUtil.Info("Accept socket client has unknown exception." + ex.ToString());
+                    LogUtil.Info("Accept socket client has unknown exception." + ex);
                 }
             });
         }
@@ -158,7 +188,10 @@ namespace NRpc.Transport.Socketing
         {
             try
             {
-                _messageArrivedHandler(connection, message, reply => connection.SendMessage(reply));
+                _messageArrivedHandler(connection, message, reply =>
+                {
+                    Task.Factory.StartNew(() => connection.QueueMessage(reply));
+                });
             }
             catch (Exception ex)
             {
@@ -168,6 +201,7 @@ namespace NRpc.Transport.Socketing
 
         private void OnConnectionClosed(ITcpConnection connection, SocketError socketError)
         {
+            _connectionDict.Remove(connection.Id);
             foreach (var listener in _connectionEventListeners)
             {
                 try
