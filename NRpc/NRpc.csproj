@@ -71,6 +71,8 @@
     <Compile Include="Logger\NLogger\NLogLogger.cs" />
     <Compile Include="NRpcDisposable.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
+    <Compile Include="Proxy\ProxyFactory.cs" />
+    <Compile Include="Proxy\RpcProxyImpl.cs" />
     <Compile Include="Scheduling\IScheduleService.cs" />
     <Compile Include="Scheduling\ScheduleRegisterExtension.cs" />
     <Compile Include="Scheduling\ScheduleService.cs" />
@@ -111,6 +113,7 @@
     <Compile Include="Utils\ExceptionUtil.cs" />
     <Compile Include="Utils\FlowControlUtil.cs" />
     <Compile Include="Utils\LogUtil.cs" />
+    <Compile Include="Utils\MethodUtil.cs" />
     <Compile Include="Utils\ObjectId.cs" />
   </ItemGroup>
   <ItemGroup>
