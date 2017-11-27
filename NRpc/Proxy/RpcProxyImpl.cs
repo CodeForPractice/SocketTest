@@ -1,13 +1,12 @@
-﻿using NRpc.Utils;
+﻿using NRpc.Container;
+using NRpc.Serializing;
+using NRpc.Transport.Remoting;
+using NRpc.Utils;
 using System;
-using System.Collections.Generic;
-using System.Linq;
 using System.Reflection;
 using System.Runtime.Remoting;
 using System.Runtime.Remoting.Messaging;
 using System.Runtime.Remoting.Proxies;
-using System.Text;
-using System.Threading.Tasks;
 
 namespace NRpc.Proxy
 {
@@ -22,11 +21,13 @@ namespace NRpc.Proxy
     {
         private Type _proxyType;
         private MethodInfo[] _methods;
+        private IBinarySerializer _binarySerializer;
 
         public RpcProxyImpl(Type proxyType)
         {
             _proxyType = proxyType;
             _methods = _proxyType.GetMethods();
+            _binarySerializer = ContainerManager.Resolve<IBinarySerializer>();
         }
 
         public string TypeName
@@ -109,22 +110,37 @@ namespace NRpc.Proxy
         /// <returns></returns>
         private object DoMethodCall(object[] arrMethodArgs, Type[] argmentTypes, MethodInfo methodInfo)
         {
-            //var methodCallInfo = new MethodCallInfo()
-            //{
-            //    ClassName = _proxyType.FullName,
-            //    MethodName = methodInfo.Name,
-            //    Parameters = arrMethodArgs,
-            //    TypeHandle = _proxyType.TypeHandle,
-            //    ArgumentTypes = argmentTypes
-            //};
-            //var client = RpcClientFactory.GetClient(_proxyType.Name);
-            //var requestMessage = new RequestMessage()
-            //{
-            //    MethodCallInfo = methodCallInfo
-            //};
-            //var responseMessage = client.Send(requestMessage);
-            //return responseMessage;
-            return null;
+            var client = RemotingClientFactory.GetClient(_proxyType);
+            var requestInfo = Create(arrMethodArgs, argmentTypes, methodInfo);
+            var response = client.InvokeSync(requestInfo, 10000);
+            return _binarySerializer.Deserialize(response.ResponseBody, methodInfo.ReturnType);
         }
+
+        private RemotingRequest Create(object[] arrMethodArgs, Type[] argmentTypes, MethodInfo methodInfo)
+        {
+            var methodCallInfo = new MethodCallInfo()
+            {
+                ClassName = _proxyType.FullName,
+                MethodName = methodInfo.Name,
+                Parameters = arrMethodArgs,
+                TypeHandle = _proxyType.TypeHandle,
+                ArgumentTypes = argmentTypes
+            };
+            var body = _binarySerializer.Serialize(methodCallInfo);
+            return new RemotingRequest(100, body);
+        }
+    }
+
+    internal class MethodCallInfo
+    {
+        public string ClassName { get; set; }
+
+        public string MethodName { get; set; }
+
+        public object[] Parameters { get; set; }
+
+        public RuntimeTypeHandle TypeHandle { get; set; }
+
+        public Type[] ArgumentTypes { get; set; }
     }
 }

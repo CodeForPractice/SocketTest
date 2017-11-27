@@ -55,6 +55,17 @@ namespace NRpc.Transport.Remoting
             get { return _clientSocket; }
         }
 
+        /// <summary>
+        /// 获取当前连接ID
+        /// </summary>
+        public Guid ConnectionID
+        {
+            get
+            {
+                return _clientSocket.Connection.Id;
+            }
+        }
+
         public IBufferPool BufferPool
         {
             get { return _receiveDataBufferPool; }

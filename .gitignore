@@ -6,3 +6,9 @@
 /SocketTest.Server/bin
 /NRpc/obj
 /NRpc/bin
+/NRpc.Client/obj
+/NRpc.Client/bin
+/NRpc.Server/obj
+/NRpc.Server/bin
+/NRpc.TestCommon/obj
+/NRpc.TestCommon/bin

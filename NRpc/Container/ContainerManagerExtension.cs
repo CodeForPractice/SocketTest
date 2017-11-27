@@ -1,5 +1,7 @@
 ﻿using NRpc.Logger;
+using NRpc.Proxy;
 using NRpc.Scheduling;
+using NRpc.Serializing;
 using NRpc.Transport;
 
 namespace NRpc.Container
@@ -17,7 +19,10 @@ namespace NRpc.Container
         {
             containerManager.UseNLog()
                             .UseDefaultSchedule()
-                            .UseSocket();
+                            .UseSocket()
+                            .UseDefaultBinarySerialize();
+
+            RemotingClientFactory.RegisterUnLoad();
             return containerManager;
         }
     }
