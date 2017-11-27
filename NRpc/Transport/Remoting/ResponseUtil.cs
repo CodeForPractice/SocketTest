@@ -1,11 +1,10 @@
 ﻿using NRpc.Container;
 using NRpc.Serializing;
-using NRpc.Transport.Remoting;
 using NRpc.Utils;
 using System;
 using System.Text;
 
-namespace NRpc.Proxy
+namespace NRpc.Transport.Remoting
 {
     /// <summary>
     /// Copyright (C) 2017 yjq 版权所有。

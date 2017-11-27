@@ -71,7 +71,7 @@
     <Compile Include="Logger\NLogger\NLogLogger.cs" />
     <Compile Include="NRpcDisposable.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
-    <Compile Include="Proxy\ResponseUtil.cs" />
+    <Compile Include="Transport\Remoting\ResponseUtil.cs" />
     <Compile Include="Proxy\ProxyFactory.cs" />
     <Compile Include="Proxy\ProxyServer.cs" />
     <Compile Include="Proxy\RemotingClientFactory.cs" />
@@ -82,6 +82,8 @@
     <Compile Include="Serializing\BinarySerializeRegisterExtension.cs" />
     <Compile Include="Serializing\DefaultBinarySerializer.cs" />
     <Compile Include="Serializing\IBinarySerializer.cs" />
+    <Compile Include="Server\NRpcHandle.cs" />
+    <Compile Include="Server\NRpcServer.cs" />
     <Compile Include="Transport\Remoting\Exceptions\RemotingRequestException.cs" />
     <Compile Include="Transport\Remoting\Exceptions\RemotingServerUnAvailableException.cs" />
     <Compile Include="Transport\Remoting\Exceptions\RemotingTimeoutException.cs" />
@@ -126,6 +128,8 @@
   <ItemGroup>
     <None Include="packages.config" />
   </ItemGroup>
-  <ItemGroup />
+  <ItemGroup>
+    <Folder Include="Client\" />
+  </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
 </Project>
