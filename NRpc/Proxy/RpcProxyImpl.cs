@@ -17,13 +17,13 @@ namespace NRpc.Proxy
     /// 类功能描述：RpcProxyImpl
     /// 创建标识：yjq 2017/11/25 20:16:29
     /// </summary>
-    public class RpcProxyImpl : RealProxy, IRemotingTypeInfo
+    public class RpcProxyImpl : RealProxy, IRemotingTypeInfo, IRpcProxy
     {
         private Type _proxyType;
         private MethodInfo[] _methods;
         private IBinarySerializer _binarySerializer;
 
-        public RpcProxyImpl(Type proxyType)
+        public RpcProxyImpl(Type proxyType) : base(typeof(IRpcProxy))
         {
             _proxyType = proxyType;
             _methods = _proxyType.GetMethods();
@@ -131,8 +131,12 @@ namespace NRpc.Proxy
         }
     }
 
+    public interface IRpcProxy { }
+
+    [Serializable]
     internal class MethodCallInfo
     {
+        public MethodCallInfo() { }
         public string ClassName { get; set; }
 
         public string MethodName { get; set; }

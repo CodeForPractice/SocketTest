@@ -29,6 +29,7 @@ namespace NRpc.Proxy
                 return ConnectedClientList[ipEndPoint];
             }
             SocketRemotingClient client = new SocketRemotingClient(new IPEndPoint(SocketUtils.GetLocalIPV4(), 12345));
+            client.RegisterConnectionEventListener(new ProxyClientConnectionLister());
             WaitConnectingClientList.TryAdd(client.ServerEndPoint, client);
             client.Start();
             if (ConnectedClientList[ipEndPoint] == null)
