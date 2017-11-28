@@ -1,5 +1,4 @@
 ﻿using NRpc.Container;
-using NRpc.Proxy;
 using NRpc.TestCommon;
 using System;
 
@@ -11,10 +10,10 @@ namespace NRpc.Server
         {
             ContainerManager.UseAutofacContainer().UseDefault()
                 .AddScoped<IUser, User>();
-            var proxyServer = new ProxyServer(12345);
-            proxyServer.Start();
+            var rpcServer = new NRpcServer(12345);
+            rpcServer.Start();
             Console.ReadLine();
-            proxyServer.ShutDown();
+            rpcServer.ShutDown();
         }
     }
 }

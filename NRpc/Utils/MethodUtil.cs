@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Reflection;
 
 namespace NRpc.Utils
 {
@@ -9,7 +10,7 @@ namespace NRpc.Utils
     /// 类功能描述：MethodUtil
     /// 创建标识：yjq 2017/11/25 20:18:11
     /// </summary>
-    public class MethodUtil
+    public static class MethodUtil
     {
         /// <summary>
         /// 获取全部的参数类型
@@ -36,5 +37,50 @@ namespace NRpc.Utils
             }
             return result;
         }
+
+        /// <summary>
+        /// 获取方法的返回类型
+        /// </summary>
+        /// <param name="methodInfo"></param>
+        /// <returns></returns>
+        public static MethodType GetMethodType(this MethodInfo methodInfo)
+        {
+            var returnType = methodInfo.ReturnType;
+            if (returnType == TypeUtil.AsyncActionType)
+                return MethodType.AsyncAction;
+            if (returnType.IsGenericType && returnType.GetGenericTypeDefinition() == TypeUtil.AsyncFunctionType)
+                return MethodType.AsyncFunction;
+            if (returnType == TypeUtil.SyncActionType)
+            {
+                return MethodType.SyncAction;
+            }
+            return MethodType.SyncFunction;
+        }
+    }
+
+    /// <summary>
+    /// 方法类型
+    /// </summary>
+    public enum MethodType
+    {
+        /// <summary>
+        /// 同步方法(无返回值)
+        /// </summary>
+        SyncAction,
+
+        /// <summary>
+        /// 同步方法(有返回值)
+        /// </summary>
+        SyncFunction,
+
+        /// <summary>
+        /// 异步(无返回值)
+        /// </summary>
+        AsyncAction,
+
+        /// <summary>
+        /// 异步方法(有返回值)
+        /// </summary>
+        AsyncFunction
     }
 }

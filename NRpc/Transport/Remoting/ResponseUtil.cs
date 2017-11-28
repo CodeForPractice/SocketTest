@@ -17,6 +17,10 @@ namespace NRpc.Transport.Remoting
     {
         public static readonly byte[] DealErrorResponseBody = Encoding.UTF8.GetBytes("Remoting Deal Error.");
 
+        public static readonly byte[] NotFoundResponseBody = Encoding.UTF8.GetBytes("Not Found Method.");
+
+        public static readonly byte[] NoneBodyResponse = new byte[0];
+
         /// <summary>
         /// 创建处理出错的RemotingResponse
         /// </summary>
@@ -25,6 +29,16 @@ namespace NRpc.Transport.Remoting
         public static RemotingResponse CreateDealErrorResponse(this RemotingRequest remotingRequest)
         {
             return new RemotingResponse(remotingRequest.Type, remotingRequest.Code, remotingRequest.Sequence, remotingRequest.CreatedTime, 500, DealErrorResponseBody, DateTime.Now, remotingRequest.Header, null);
+        }
+
+        /// <summary>
+        /// 创建未找到方法的RemotingResponse
+        /// </summary>
+        /// <param name="remotingRequest"></param>
+        /// <returns></returns>
+        public static RemotingResponse CreateNotFoundResponse(this RemotingRequest remotingRequest)
+        {
+            return new RemotingResponse(remotingRequest.Type, remotingRequest.Code, remotingRequest.Sequence, remotingRequest.CreatedTime, 404, NotFoundResponseBody, DateTime.Now, remotingRequest.Header, null);
         }
 
         /// <summary>
@@ -40,6 +54,10 @@ namespace NRpc.Transport.Remoting
             {
                 var _binarySerializer = ContainerManager.Resolve<IBinarySerializer>();
                 body = _binarySerializer.Serialize(result);
+            }
+            else if (result == null)
+            {
+                body = NoneBodyResponse;
             }
             else
             {

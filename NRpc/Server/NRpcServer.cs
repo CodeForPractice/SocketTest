@@ -1,6 +1,4 @@
-﻿using NRpc.Container;
-using NRpc.Serializing;
-using NRpc.Transport.Remoting;
+﻿using NRpc.Transport.Remoting;
 using NRpc.Transport.Socketing;
 using System.Net;
 
@@ -16,14 +14,12 @@ namespace NRpc.Server
     public class NRpcServer
     {
         private IPEndPoint _iPEndPoint;
-        private IBinarySerializer _binarySerializer;
         private readonly SocketRemotingServer _socketRemotingServer;
 
         public NRpcServer(int port)
         {
             _iPEndPoint = new IPEndPoint(SocketUtils.GetLocalIPV4(), port);
             _socketRemotingServer = new SocketRemotingServer(_iPEndPoint).RegisterRequestHandler(100, new NRpcHandle());
-            _binarySerializer = ContainerManager.Resolve<IBinarySerializer>();
         }
 
         public void Start()

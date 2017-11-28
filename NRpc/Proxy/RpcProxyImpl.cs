@@ -7,6 +7,7 @@ using System.Reflection;
 using System.Runtime.Remoting;
 using System.Runtime.Remoting.Messaging;
 using System.Runtime.Remoting.Proxies;
+using System.Threading.Tasks;
 
 namespace NRpc.Proxy
 {
@@ -113,7 +114,50 @@ namespace NRpc.Proxy
             var client = RemotingClientFactory.GetClient(_proxyType);
             var requestInfo = Create(arrMethodArgs, argmentTypes, methodInfo);
             var response = client.InvokeSync(requestInfo, 10000);
-            return _binarySerializer.Deserialize(response.ResponseBody, methodInfo.ReturnType);
+            var delegateType = methodInfo.GetMethodType();
+            if (delegateType == MethodType.SyncAction)
+            {
+                return null;
+            }
+            else if (delegateType == MethodType.SyncFunction)
+            {
+                if (response.ResponseBody == null || response.ResponseBody.Length == 0)
+                {
+                    return null;
+                }
+                return _binarySerializer.Deserialize(response.ResponseBody, methodInfo.ReturnType);
+            }
+            else if (delegateType == MethodType.AsyncAction)
+            {
+                return AsyncAction();
+            }
+            else
+            {
+                var resultType = methodInfo.ReturnType.GetGenericArguments()[0];
+                var mi = handleAsyncMethodInfo.MakeGenericMethod(resultType);
+                if (response.ResponseBody == null || response.ResponseBody.Length == 0)
+                {
+                    return mi.Invoke(this, new[] { null as object });
+                }
+                var executeResult = _binarySerializer.Deserialize(response.ResponseBody, resultType);
+                var result = mi.Invoke(this, new[] { executeResult });
+                return result;
+            }
+        }
+
+        private Task AsyncAction()
+        {
+            return Task.Delay(1);
+        }
+
+        /// <summary>
+        /// 异步方法处理
+        /// </summary>
+        private static readonly MethodInfo handleAsyncMethodInfo = typeof(RpcProxyImpl).GetMethod("AsyncFunction", BindingFlags.Instance | BindingFlags.NonPublic);
+
+        private Task<T> AsyncFunction<T>(T value)
+        {
+            return Task.FromResult(value);
         }
 
         private RemotingRequest Create(object[] arrMethodArgs, Type[] argmentTypes, MethodInfo methodInfo)
@@ -136,7 +180,10 @@ namespace NRpc.Proxy
     [Serializable]
     internal class MethodCallInfo
     {
-        public MethodCallInfo() { }
+        public MethodCallInfo()
+        {
+        }
+
         public string ClassName { get; set; }
 
         public string MethodName { get; set; }
