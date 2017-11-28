@@ -6,14 +6,14 @@ using System.Collections.Concurrent;
 using System.Net;
 using System.Net.Sockets;
 
-namespace NRpc.Proxy
+namespace NRpc.Client
 {
     /// <summary>
     /// Copyright (C) 2017 yjq 版权所有。
     /// 类名：RemotingClientFactory.cs
     /// 类属性：公共类（非静态）
     /// 类功能描述：
-    /// 创建标识：yjq 2017/11/27 16:28:27
+    /// 创建标识：yjq 2017/11/28 16:13:34
     /// </summary>
     internal class RemotingClientFactory
     {
@@ -47,7 +47,10 @@ namespace NRpc.Proxy
 
             public void OnConnectionClosed(ITcpConnection connection, SocketError socketError)
             {
-                ConnectedClientList.TryRemove(connection.RemotingEndPoint, out SocketRemotingClient client);
+                if (ConnectedClientList.TryRemove(connection.RemotingEndPoint, out SocketRemotingClient client))
+                {
+                    client.Shutdown();
+                }
             }
 
             public void OnConnectionEstablished(ITcpConnection connection)

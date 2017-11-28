@@ -1,5 +1,5 @@
-﻿using NRpc.Logger;
-using NRpc.Proxy;
+﻿using NRpc.Client;
+using NRpc.Logger;
 using NRpc.Scheduling;
 using NRpc.Serializing;
 using NRpc.Transport;

@@ -28,17 +28,19 @@ namespace NRpc.Transport.Remoting
         /// <returns></returns>
         public static RemotingResponse CreateDealErrorResponse(this RemotingRequest remotingRequest)
         {
-            return new RemotingResponse(remotingRequest.Type, remotingRequest.Code, remotingRequest.Sequence, remotingRequest.CreatedTime, 500, DealErrorResponseBody, DateTime.Now, remotingRequest.Header, null);
+            return new RemotingResponse(remotingRequest.Type, remotingRequest.Code, remotingRequest.Sequence, remotingRequest.CreatedTime, ResponseState.Error, DealErrorResponseBody, DateTime.Now, remotingRequest.Header, null);
         }
 
         /// <summary>
         /// 创建未找到方法的RemotingResponse
         /// </summary>
         /// <param name="remotingRequest"></param>
+        /// <param name="methodName">方法名字</param>
         /// <returns></returns>
-        public static RemotingResponse CreateNotFoundResponse(this RemotingRequest remotingRequest)
+        public static RemotingResponse CreateNotFoundResponse(this RemotingRequest remotingRequest, string methodName)
         {
-            return new RemotingResponse(remotingRequest.Type, remotingRequest.Code, remotingRequest.Sequence, remotingRequest.CreatedTime, 404, NotFoundResponseBody, DateTime.Now, remotingRequest.Header, null);
+            string messag = $"Not Fount Method:[{methodName}].";
+            return new RemotingResponse(remotingRequest.Type, remotingRequest.Code, remotingRequest.Sequence, remotingRequest.CreatedTime, ResponseState.NotFound, Encoding.UTF8.GetBytes(messag), DateTime.Now, remotingRequest.Header, null);
         }
 
         /// <summary>
@@ -64,7 +66,17 @@ namespace NRpc.Transport.Remoting
                 body = result as byte[];
             }
 
-            return new RemotingResponse(remotingRequest.Type, remotingRequest.Code, remotingRequest.Sequence, remotingRequest.CreatedTime, 100, body, DateTime.Now, remotingRequest.Header, null);
+            return new RemotingResponse(remotingRequest.Type, remotingRequest.Code, remotingRequest.Sequence, remotingRequest.CreatedTime, ResponseState.Success, body, DateTime.Now, remotingRequest.Header, null);
+        }
+
+        /// <summary>
+        /// 判断反馈内容是否为空的
+        /// </summary>
+        /// <param name="remotingResponse"></param>
+        /// <returns></returns>
+        public static bool IsEmptyBody(this RemotingResponse remotingResponse)
+        {
+            return remotingResponse == null || remotingResponse.ResponseBody == null || remotingResponse.ResponseBody.Length == 0;
         }
     }
 }

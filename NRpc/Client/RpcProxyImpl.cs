@@ -1,34 +1,30 @@
-﻿using NRpc.Container;
-using NRpc.Serializing;
-using NRpc.Transport.Remoting;
-using NRpc.Utils;
+﻿using NRpc.Utils;
 using System;
 using System.Reflection;
 using System.Runtime.Remoting;
 using System.Runtime.Remoting.Messaging;
 using System.Runtime.Remoting.Proxies;
-using System.Threading.Tasks;
 
-namespace NRpc.Proxy
+namespace NRpc.Client
 {
     /// <summary>
     /// Copyright (C) 2017 yjq 版权所有。
     /// 类名：RpcProxyImpl.cs
     /// 类属性：公共类（非静态）
-    /// 类功能描述：RpcProxyImpl
-    /// 创建标识：yjq 2017/11/25 20:16:29
+    /// 类功能描述：
+    /// 创建标识：yjq 2017/11/28 16:11:52
     /// </summary>
     public class RpcProxyImpl : RealProxy, IRemotingTypeInfo, IRpcProxy
     {
         private Type _proxyType;
         private MethodInfo[] _methods;
-        private IBinarySerializer _binarySerializer;
+        private readonly ClientMethodCaller _clientMethodCaller;
 
         public RpcProxyImpl(Type proxyType) : base(typeof(IRpcProxy))
         {
             _proxyType = proxyType;
             _methods = _proxyType.GetMethods();
-            _binarySerializer = ContainerManager.Resolve<IBinarySerializer>();
+            _clientMethodCaller = new ClientMethodCaller(_proxyType);
         }
 
         public string TypeName
@@ -111,87 +107,7 @@ namespace NRpc.Proxy
         /// <returns></returns>
         private object DoMethodCall(object[] arrMethodArgs, Type[] argmentTypes, MethodInfo methodInfo)
         {
-            var client = RemotingClientFactory.GetClient(_proxyType);
-            var requestInfo = Create(arrMethodArgs, argmentTypes, methodInfo);
-            var response = client.InvokeSync(requestInfo, 10000);
-            var delegateType = methodInfo.GetMethodType();
-            if (delegateType == MethodType.SyncAction)
-            {
-                return null;
-            }
-            else if (delegateType == MethodType.SyncFunction)
-            {
-                if (response.ResponseBody == null || response.ResponseBody.Length == 0)
-                {
-                    return null;
-                }
-                return _binarySerializer.Deserialize(response.ResponseBody, methodInfo.ReturnType);
-            }
-            else if (delegateType == MethodType.AsyncAction)
-            {
-                return AsyncAction();
-            }
-            else
-            {
-                var resultType = methodInfo.ReturnType.GetGenericArguments()[0];
-                var mi = handleAsyncMethodInfo.MakeGenericMethod(resultType);
-                if (response.ResponseBody == null || response.ResponseBody.Length == 0)
-                {
-                    return mi.Invoke(this, new[] { null as object });
-                }
-                var executeResult = _binarySerializer.Deserialize(response.ResponseBody, resultType);
-                var result = mi.Invoke(this, new[] { executeResult });
-                return result;
-            }
+            return _clientMethodCaller.DoMethodCall(arrMethodArgs, argmentTypes, methodInfo);
         }
-
-        private Task AsyncAction()
-        {
-            return Task.Delay(1);
-        }
-
-        /// <summary>
-        /// 异步方法处理
-        /// </summary>
-        private static readonly MethodInfo handleAsyncMethodInfo = typeof(RpcProxyImpl).GetMethod("AsyncFunction", BindingFlags.Instance | BindingFlags.NonPublic);
-
-        private Task<T> AsyncFunction<T>(T value)
-        {
-            return Task.FromResult(value);
-        }
-
-        private RemotingRequest Create(object[] arrMethodArgs, Type[] argmentTypes, MethodInfo methodInfo)
-        {
-            var methodCallInfo = new MethodCallInfo()
-            {
-                ClassName = _proxyType.FullName,
-                MethodName = methodInfo.Name,
-                Parameters = arrMethodArgs,
-                TypeHandle = _proxyType.TypeHandle,
-                ArgumentTypes = argmentTypes
-            };
-            var body = _binarySerializer.Serialize(methodCallInfo);
-            return new RemotingRequest(100, body);
-        }
-    }
-
-    public interface IRpcProxy { }
-
-    [Serializable]
-    internal class MethodCallInfo
-    {
-        public MethodCallInfo()
-        {
-        }
-
-        public string ClassName { get; set; }
-
-        public string MethodName { get; set; }
-
-        public object[] Parameters { get; set; }
-
-        public RuntimeTypeHandle TypeHandle { get; set; }
-
-        public Type[] ArgumentTypes { get; set; }
     }
 }

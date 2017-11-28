@@ -50,6 +50,13 @@
     <Reference Include="System.Xml" />
   </ItemGroup>
   <ItemGroup>
+    <Compile Include="Client\ClientMethodCaller.cs" />
+    <Compile Include="Client\IRpcProxy.cs" />
+    <Compile Include="Client\MethodCallInfo.cs" />
+    <Compile Include="Client\ProxyFactory.cs" />
+    <Compile Include="Client\RemotingClientFactory.cs" />
+    <Compile Include="Client\RpcClientSetting.cs" />
+    <Compile Include="Client\RpcProxyImpl.cs" />
     <Compile Include="Container\AutofacContainer\AutofacLeftScope.cs" />
     <Compile Include="Container\AutofacContainer\AutofacObjectContainer.cs" />
     <Compile Include="Container\AutofacContainer\AutofacRegisterExtension.cs" />
@@ -71,11 +78,9 @@
     <Compile Include="Logger\NLogger\NLogLogger.cs" />
     <Compile Include="NRpcDisposable.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
+    <Compile Include="Server\ServerMethodCaller.cs" />
+    <Compile Include="Transport\Remoting\RemotingState.cs" />
     <Compile Include="Transport\Remoting\ResponseUtil.cs" />
-    <Compile Include="Proxy\ProxyFactory.cs" />
-    <Compile Include="Proxy\ProxyServer.cs" />
-    <Compile Include="Proxy\RemotingClientFactory.cs" />
-    <Compile Include="Proxy\RpcProxyImpl.cs" />
     <Compile Include="Scheduling\IScheduleService.cs" />
     <Compile Include="Scheduling\ScheduleRegisterExtension.cs" />
     <Compile Include="Scheduling\ScheduleService.cs" />
@@ -128,8 +133,6 @@
   <ItemGroup>
     <None Include="packages.config" />
   </ItemGroup>
-  <ItemGroup>
-    <Folder Include="Client\" />
-  </ItemGroup>
+  <ItemGroup />
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
 </Project>
